@@ -39,7 +39,6 @@ The sheet has three columns: a name, description and a category.
 ![Screenshot of CSV sheet](https://github.com/PrincessRoseSummer/F-list-Plus/assets/63157435/6af49494-09ff-458c-b036-07d5b1a13682)
 
 # Known Issues
-- On Firefox, sometimes you might have to click on the extension in the toolbar to activate it.
 - The csv file has an extra empty row that's categorised as favourites sometimes.
 - Exporting can sometimes cause issues with double speech marks.
 - GIFs aren't whitelisted as an uploadable option.
