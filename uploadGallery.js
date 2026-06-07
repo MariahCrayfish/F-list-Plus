@@ -1,86 +1,125 @@
+const UPLOAD_SLEEP_MS = 2000;
+const DISABLE_MS = 20000;
+
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function uploadImageSet(imageNum){
-  list = new DataTransfer();
-  f = document.querySelector("#imagefileHolder").files[imageNum];
-  list.items.add(f);
+async function uploadImageSet(imageNum) {
+  const holder = document.querySelector("#imagefileHolder");
+  const originalFile = holder.files[imageNum];
 
-  myFileList = list.files;
-  document.querySelector("#imagefile").files = myFileList;
-  is_image_valid(f);
+  const uploadFile = await processImage(originalFile);
+
+  const list = new DataTransfer();
+  list.items.add(uploadFile);
+
+  const imagefile = document.querySelector("#imagefile");
+  imagefile.files = list.files;
+
+  is_image_valid(originalFile);
   uploadImage();
 }
 
 async function uploadImages() {
-  fl = document.querySelector("#imagefileHolder").files.length;
-  disableButton();
+  const holder = document.querySelector("#imagefileHolder");
+  const fl = holder && holder.files ? holder.files.length : 0;
+  disableButton(DISABLE_MS);
   for (let i = 0; i < fl; i++) {
-    uploadImageSet(i);
-    await sleep(2000);
+    await uploadImageSet(i);
+    await sleep(UPLOAD_SLEEP_MS);
   }
 }
 
 const is_image_valid = (file) => {
-  var s = file.size/1024/1024;
-  let reader = new FileReader();    // create a file reader instance.
+  const s = file.size / 1024 / 1024;
+  const reader = new FileReader(); // create a file reader instance.
 
   reader.onload = function (e) {
     let img = new Image();
     img.src = e.target.result;
 
     img.onload = function () {
-      var w = this.width;
-      var h = this.height;
-      if (h > 4000 || w > 4000 || s>2) {
-        invalidImageLister(file, h, w, s)
+      const w = this.width;
+      const h = this.height;
+      if (h > MAX_DIMENSION || w > MAX_DIMENSION || s > MAX_IMAGE_MB) {
+        invalidImageLister(file, h, w, s);
       }
-    }
+    };
   };
   reader.readAsDataURL(file);
-}
+};
 
 function invalidImageLister(file, height, width, size) {
-   if (document.getElementById("invalidImageList")==undefined) {
+  if (!document.getElementById("invalidImageList")) {
     var title = document.createElement("p");
-    title.innerText = "Invalid images";
+    title.innerText =
+      "Invalid images\n(must be under 8mb and 8000x8000px)\n[Below may be resized or compressed then uploaded if possible, otherwise they will be skipped]:";
     title.style.textDecorationLine = "underline";
-    title.style.padding = "20px 20px 0 20px"
+    title.style.padding = "20px 20px 0 20px";
     title.id = "invalidImageList";
     document.querySelector("#uploadimagesbutton").after(title);
 
     var list = document.createElement("ul");
     list.id = "invalidList";
     document.querySelector("#invalidImageList").after(list);
-   }
-   size = String(size).slice(0, 5)
-   if (height>4000) {
-    height = `<span style="color: red;">` + height + `</span>`;
-   }
-   if (width>4000) {
-    width = `<span style="color: red;">` + width + `</span>`;
-   }
-   if (size>2) {
-    size = `<span style="color: red;">` + size + `mb</span>`;
-   }
-   invalidFileListing = `<li style="padding: 5px 20px;">` + file.name + `: ` + height + `x` + width + ` ` + size + `</li>`;
-   document.querySelector("#invalidList").innerHTML += invalidFileListing;
+  }
+  size = String(size).slice(0, 5);
+  let heightHtml = height;
+  let widthHtml = width;
+  let sizeHtml = size;
+  if (height > MAX_DIMENSION) {
+    heightHtml = `<span style="color: red;">${height}</span>`;
+  }
+  if (width > MAX_DIMENSION) {
+    widthHtml = `<span style="color: red;">${width}</span>`;
+  }
+  if (size > MAX_IMAGE_MB) {
+    sizeHtml = `<span style="color: red;">${size}mb</span>`;
+  }
+  const invalidFileListing = `<li style="padding: 5px 20px;">${file.name}: ${heightHtml}x${widthHtml} ${sizeHtml}</li>`;
+  const invalidListEl = document.querySelector("#invalidList");
+  if (invalidListEl) invalidListEl.innerHTML += invalidFileListing;
 }
 
-async function disableButton(){
-  document.getElementById("uploadimagesbutton").disabled = true;
-  await sleep(10000);
-  document.getElementById("uploadimagesbutton").disabled = false;
+async function disableButton(ms) {
+  const btn = document.getElementById("uploadimagesbutton");
+  if (!btn) return;
+  btn.disabled = true;
+  await sleep(ms);
+  btn.disabled = false;
 }
 
-document.querySelector("#CharacterAddImageSection").innerHTML = `
+function initializeUploadUI() {
+  const characterSection = document.querySelector("#CharacterAddImageSection");
+  if (!characterSection) return false;
+
+  characterSection.innerHTML = `
 <label for="imagefile" style="padding: 0 15px;">Select multiple files</label>
-<input id="imagefileHolder" type="file" multiple="multiple" accept="image/jpeg, image/png, image/jpg">
+<input id="imagefileHolder" type="file" multiple accept="image/jpeg, image/png, image/jpg, image/gif">
 <input type="file" id="imagefile" disabled hidden>
-<input id=\"addimagebutton\" type=\"button\" onclick=\"uploadImage(); return false;\" value=\"Add Image\" disabled hidden>
-<input id=\"uploadimagesbutton\" type=\"button\" return false;\" value=\"Upload Images\">
+<input id="addimagebutton" type="button" onclick="uploadImage(); return false;" value="Add Image" disabled hidden>
+<input id="uploadimagesbutton" type="button" value="Upload Images">
 `;
-document.querySelector("#uploadimagesbutton").addEventListener('click', function(e){
-  return uploadImages();
-})
+
+  const uploadBtn = document.querySelector("#uploadimagesbutton");
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", function () {
+      uploadImages();
+    });
+  }
+
+  return true;
+}
+
+if (!initializeUploadUI()) {
+  const observer = new MutationObserver(() => {
+    if (initializeUploadUI()) {
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+}
