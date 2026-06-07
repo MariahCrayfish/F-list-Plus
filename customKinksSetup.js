@@ -1,4 +1,4 @@
-var s = document.createElement('script');
-s.src = chrome.runtime.getURL('customKinks.js');
-s.onload = function() { this.remove(); };
-(document.head || document.documentElement).appendChild(s);
+var customKinksScript = document.createElement('script');
+customKinksScript.src = chrome.runtime.getURL('customKinks.js');
+customKinksScript.onload = function() { this.remove(); };
+(document.head || document.documentElement).appendChild(customKinksScript);
